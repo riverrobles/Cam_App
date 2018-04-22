@@ -25,12 +25,15 @@ class CopyPasteBox(ttk.Entry):
 
 class App():
     def __init__(self,master):
+        self.root = master
         self.controller = IC_ImagingControl()
         self.controller.init_library()
         names = self.controller.get_unique_device_names()
-        self.ncams = len(names)
         
-        self.cams = [Camera(self.controller,names[i]) for i in range(self.ncams)]
+        self.cam = Camera(self.controller,names[0])
+        #self.ncams = len(names)
+        
+        #self.cams = [Camera(self.controller,names[i]) for i in range(self.ncams)]
 
         # Frames
 
@@ -172,11 +175,18 @@ class App():
 
         canvas = ttk.Canvas(self.video_frame,bg='white')
         canvas.pack()
+        
+        self.update_parameters()
 
     def update_preview(self,event):
         directory = self.save_directory.get()
         basename = self.save_file.get()
         self.preview_name['text']=["{}/{}.bmp".format(directory,basename)]
+        
+    def update_parameters(self): 
+        self.cam.update_frame_data()
+        self.cam.update_centroid_params()
+        self.root.after(10,self.update_parameters)
 
     def set_gain(self,event):
         return None
