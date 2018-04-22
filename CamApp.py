@@ -173,8 +173,8 @@ class App():
 
         #Video Frame
 
-        canvas = ttk.Canvas(self.video_frame,bg='white')
-        canvas.pack()
+        self.canvas = ttk.Canvas(self.video_frame,bg='white')
+        self.canvas.pack()
         
         self.update_parameters()
 
@@ -186,13 +186,17 @@ class App():
     def update_parameters(self): 
         self.cam.update_frame_data()
         self.cam.update_centroid_params()
+        self.centroid_x.set(self.cam.cent_x)
+        self.centroid_y.set(self.cam.cent_y)
+        self.centroid_width.set(self.cam.cent_width)
+        self.centroid.height.set(self.cam.cent_height)
         self.root.after(10,self.update_parameters)
 
     def set_gain(self,event):
         return None
 
     def save_background(self):
-        return None
+        self.cam.update_background_frame()
 
     def scan_length(self):
         return None

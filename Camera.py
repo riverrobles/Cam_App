@@ -15,6 +15,9 @@ class Camera():
         self.frame_data = np.ndarray(buffer=data,dtype=np.uint8,shape=(height,width,depth))
         self.cam.stop_live()
         
+        #initialize background frame data
+        self.background_frame = self.frame_data
+        
         #initialize centroid parameters 
         self.cent_x = 0
         self.cent_y = 0
@@ -24,14 +27,18 @@ class Camera():
     def update_frame_data(self):
         self.cam.start_live()
         data, width, height, depth = self.cam.get_image_data()
-        self.frame_data = np.ndarray(buffer=data,dtype=np.uint8,shape=(height,width,depth))
+        raw_frame_data = np.ndarray(buffer=data,dtype=np.uint8,shape=(height,width,depth))
+        self.frame_data = np.add(raw_frame_data,self.background_frame * -1)
+        self.cam.stop_live()
+        
+    def update_background_frame(self):
+        self.cam.start_live()
+        data, width, height, depth = self.cam.get_image_data()
+        self.background_frame = np.ndarray(buffer=data,dtype=np.uint8,shape=(height,width,depth))
         self.cam.stop_live()
 
     def show_display(self):
         self.cam.start_live(show_display=True)
-
-    def save_screen(self,file):
-        self.cam.save_image(file)
 
     def update_centroid_params(self): 
         self.get_x()
