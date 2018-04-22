@@ -28,8 +28,9 @@ class App():
         self.controller = IC_ImagingControl()
         self.controller.init_library()
         names = self.controller.get_unique_device_names()
-
-        self.cam1 = Camera(self.controller,names[0])
+        self.ncams = len(names)
+        
+        self.cams = [Camera(self.controller,names[i]) for i in range(self.ncams)]
 
         # Frames
 
@@ -185,13 +186,17 @@ class App():
 
     def scan_length(self):
         return None
+        
+    def close_cameras(self):
+        for cam in self.cams:
+            cam.close_cam()
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
     root = ttk.Tk()
     app = App(root)
     root.mainloop()
-    app.cam1.close()
+    app.close_cameras()
     app.controller.close_library()
 
 if __name__=='__main__':
