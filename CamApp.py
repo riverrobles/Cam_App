@@ -124,7 +124,7 @@ class App():
         preview_label = ttk.Label(self.save_frame,text="Save File Name Preview: ")
         preview_label.grid(row=2,column=0,sticky=ttk.E)
 
-        self.preview_name = ttk.Label(self.save_frame,text="{}/{}.bmp".format(self.save_directory.get(),self.save_file.get()))
+        self.preview_name = ttk.Label(self.save_frame,text="{}/{}.jpg".format(self.save_directory.get(),self.save_file.get()))
         self.preview_name.grid(row=2,column=1,sticky=ttk.W)
 
         interval_label = ttk.Label(self.save_frame,text='Capture Interval (s): ')
@@ -180,6 +180,7 @@ class App():
         self.canvas.pack()
         self.cam.save_image()
         img = PIL.Image.open('canvas.jpg')
+        #img = PIL.Image.fromarray(self.cam.frame_data)
         self.canvas.image = PIL.ImageTk.PhotoImage(img)
         self.canvas.create_image(0,0,image=self.canvas.image,anchor='nw')
         
@@ -188,10 +189,11 @@ class App():
     def update_preview(self,event):
         directory = self.save_directory.get()
         basename = self.save_file.get()
-        self.preview_name['text']=["{}/{}.bmp".format(directory,basename)]
+        self.preview_name['text']=["{}/{}.jpg".format(directory,basename)]
         
-    def update_parameters(self): 
+    def update_parameters(self):
         self.cam.update_frame_data()
+        
         #self.cam.update_centroid_params()
         #self.centroid_x.set(self.cam.cent_x)
         #self.centroid_y.set(self.cam.cent_y)
@@ -199,15 +201,14 @@ class App():
         #self.centroid.height.set(self.cam.cent_height)
 
         self.canvas.delete('all')
-        self.cam.save_image()
-        img = PIL.Image.open('canvas.jpg')
+        img = PIL.Image.fromarray(self.cam.frame_data).transpose(PIL.Image.FLIP_TOP_BOTTOM)
         self.canvas.image = PIL.ImageTk.PhotoImage(img)
         self.canvas.create_image(0,0,image=self.canvas.image,anchor='nw')
-
+    
         #self.canvas.create_line(self.cam.cent_x-self.cent_width,self.cam.cent_y,self.cam.cent_x+self.cam.cent_width,self.cam.cent_y,fill='red')
         #self.canvas.create_line(self.cam.cent_x,self.cam.cent_y-self.cam.cent_height,self.cam.cent_x,self.cam.cent_y+self.cam.cent_height,fill='red')
 
-        self.root.after(300,self.update_parameters)
+        self.root.after(20,self.update_parameters)
 
     def set_gain(self,event):
         return None
