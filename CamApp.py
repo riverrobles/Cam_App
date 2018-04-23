@@ -1,7 +1,10 @@
 from pyicic.IC_ImagingControl import *
 import logging
 import tkinter as ttk
+import time
 from Camera import Camera
+import PIL.Image
+import PIL.ImageTk
 
 class CopyPasteBox(ttk.Entry):
     def __init__(self, master, **kw):
@@ -173,8 +176,12 @@ class App():
 
         #Video Frame
 
-        self.canvas = ttk.Canvas(self.video_frame,bg='white')
+        self.canvas = ttk.Canvas(self.video_frame,width=640,height=480,bg='white')
         self.canvas.pack()
+        self.cam.save_image()
+        img = PIL.Image.open('canvas.jpg')
+        self.canvas.image = PIL.ImageTk.PhotoImage(img)
+        self.canvas.create_image(0,0,image=self.canvas.image,anchor='nw')
         
         self.update_parameters()
 
@@ -185,11 +192,16 @@ class App():
         
     def update_parameters(self): 
         self.cam.update_frame_data()
-        self.cam.update_centroid_params()
-        self.centroid_x.set(self.cam.cent_x)
-        self.centroid_y.set(self.cam.cent_y)
-        self.centroid_width.set(self.cam.cent_width)
-        self.centroid.height.set(self.cam.cent_height)
+        #self.cam.update_centroid_params()
+        #self.centroid_x.set(self.cam.cent_x)
+        #self.centroid_y.set(self.cam.cent_y)
+        #self.centroid_width.set(self.cam.cent_width)
+        #self.centroid.height.set(self.cam.cent_height)
+        self.canvas.delete('all')
+        self.cam.save_image()
+        img = PIL.Image.open('canvas.jpg')
+        self.canvas.image = PIL.ImageTk.PhotoImage(img)
+        self.canvas.create_image(0,0,image=self.canvas.image,anchor='nw')
         self.root.after(10,self.update_parameters)
 
     def set_gain(self,event):
@@ -210,7 +222,9 @@ def main():
     root = ttk.Tk()
     app = App(root)
     root.mainloop()
-    app.close_cameras()
+    app.cam.cam.stop_live()
+    app.cam.cam.close()
+    #app.close_cameras()
     app.controller.close_library()
 
 if __name__=='__main__':

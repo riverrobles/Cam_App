@@ -1,18 +1,20 @@
 import numpy as np
 import PIL.Image
+import time
+from pyicic.IC_ImagingControl import *
 
-frame = np.load("file.npy")
+ic = IC_ImagingControl()
+ic.init_library()
+names = ic.get_unique_device_names()
 
-img = PIL.Image.new('RGB',(640,480))
-pixels = img.load()
+cam = ic.get_device(names[0])
+cam.open()
+cam.enable_continuous_mode(True)
 
-for i in range(img.size[0]):
-    for j in range(img.size[1]):
-        pixels[i,j] = (frame[j][i][0],frame[j][i][1],frame[j][i][2])
+cam.start_live()
+time.sleep(0.04)
+cam.save_image(b'output7.jpg')
+cam.stop_live()
+cam.close()
+ic.close_library()
 
-img.show()
-
-print(frame)
-print(frame*-1)
-
-print(np.add(frame,frame*-1))
