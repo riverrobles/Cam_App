@@ -192,6 +192,7 @@ class App():
         self.preview_name['text']=["{}/{}.jpg".format(directory,basename)]
         
     def update_parameters(self):
+        start = time.time()
         self.cam.update_frame_data()
         
         #self.cam.update_centroid_params()
@@ -207,14 +208,14 @@ class App():
     
         #self.canvas.create_line(self.cam.cent_x-self.cent_width,self.cam.cent_y,self.cam.cent_x+self.cam.cent_width,self.cam.cent_y,fill='red')
         #self.canvas.create_line(self.cam.cent_x,self.cam.cent_y-self.cam.cent_height,self.cam.cent_x,self.cam.cent_y+self.cam.cent_height,fill='red')
-
-        self.root.after(20,self.update_parameters)
+        print(time.time()-start)
+        self.root.after(5,self.update_parameters)
 
     def set_gain(self,event):
         return None
 
     def save_background(self):
-        self.cam.update_background_frame()
+        self.cam.update_background_frame(s)
 
     def scan_length(self):
         return None
