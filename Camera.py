@@ -15,6 +15,7 @@ class Camera():
         self.cam.start_live()
         time.sleep(0.1)
         data, width, height, depth = self.cam.get_image_data()
+        self.data = data
         self.frame_data = np.ndarray(buffer=data,dtype=np.uint8,shape=(height,width,depth))
         self.cam.stop_live()
         
@@ -32,8 +33,8 @@ class Camera():
         time.sleep(0.1)
         data, width, height, depth = self.cam.get_image_data()
         raw_frame_data = np.ndarray(buffer=data,dtype=np.uint8,shape=(height,width,depth))
-        self.frame_data = raw_frame_data
-        #self.frame_data = np.add(raw_frame_data,self.background_frame * -1)
+        #self.frame_data = raw_frame_data
+        self.frame_data = np.add(raw_frame_data,self.background_frame * -1)
         self.cam.stop_live()
         
     def update_background_frame(self):
@@ -48,15 +49,6 @@ class Camera():
         time.sleep(0.1)
         self.cam.save_image(b'canvas.jpg')
         self.cam.stop_live()
-
-    def get_image(self):
-        img = PIL.Image.new('RGB',(640,480))
-        pixels = img.load()
-        for i in range(640):
-            for j in range(480):
-                pixels[i,479-j] = (self.frame_data[j][i][0],self.frame_data[j][i][1],self.frame_data[j][i][2])
-        img.show()
-        return img
     
     def update_centroid_params(self): 
         self.get_x()

@@ -197,12 +197,17 @@ class App():
         #self.centroid_y.set(self.cam.cent_y)
         #self.centroid_width.set(self.cam.cent_width)
         #self.centroid.height.set(self.cam.cent_height)
+
         self.canvas.delete('all')
         self.cam.save_image()
         img = PIL.Image.open('canvas.jpg')
         self.canvas.image = PIL.ImageTk.PhotoImage(img)
         self.canvas.create_image(0,0,image=self.canvas.image,anchor='nw')
-        self.root.after(10,self.update_parameters)
+
+        #self.canvas.create_line(self.cam.cent_x-self.cent_width,self.cam.cent_y,self.cam.cent_x+self.cam.cent_width,self.cam.cent_y,fill='red')
+        #self.canvas.create_line(self.cam.cent_x,self.cam.cent_y-self.cam.cent_height,self.cam.cent_x,self.cam.cent_y+self.cam.cent_height,fill='red')
+
+        self.root.after(300,self.update_parameters)
 
     def set_gain(self,event):
         return None
