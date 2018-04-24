@@ -1,6 +1,7 @@
 from pyicic.IC_ImagingControl import *
 import os
 import numpy as np
+import logging
 import time
 import PIL.Image
 
@@ -9,6 +10,7 @@ class Camera():
         self.name = name
         self.cam = controller.get_device(self.name)
         self.cam.open()
+        self.cam.gain.auto = False
         self.cam.enable_continuous_mode(True)
         
         #initialize frame data parameter 
@@ -29,21 +31,25 @@ class Camera():
     def update_frame_data(self):
         data, width, height, depth = self.cam.get_image_data()
         raw_frame_data = np.ndarray(buffer=data,dtype=np.uint8,shape=(height,width,depth))
-        self.frame_data = raw_frame_data
-        #self.frame_data = np.add(raw_frame_data,self.background_frame * -1)
+        #self.frame_data = raw_frame_data
+        self.frame_data = (np.add(raw_frame_data,self.background_frame * -1)).astype(np.uint8)
         
     def update_background_frame(self):
         data, width, height, depth = self.cam.get_image_data()
         self.background_frame = np.ndarray(buffer=data,dtype=np.uint8,shape=(height,width,depth))
 
-    def save_image(self):
-        self.cam.save_image(b'canvas.jpg')
-    
     def update_centroid_params(self): 
-        self.get_x()
-        self.get_y()
-        self.get_width()
-        self.get_height()
+        try:
+            self.get_x()
+            self.get_y()
+            self.get_width()
+            self.get_height()
+        except IndexError as e:
+            logging.debug(e)
+
+    def save_file(self,filename):
+        np.save("{}data".format(filename),self.frame_data())
+        self.cam.save_image(filename+".jpg",1)
 
     def get_x(self):
         colsums = []
@@ -79,13 +85,13 @@ class Camera():
     def get_height(self):
         i, uppermax = self.cent_y, 0 
         while uppermax==0:
-            if self.frame_data[i][self.centx][0]<self.frame_data[i+1][self.centx][0]:
+            if self.frame_data[i][self.cent_x][0]<self.frame_data[i+1][self.cent_x][0]:
                 uppermax = i
             else:
                 i += 1 
         i, lowermax = self.cent_y, 0
         while lowermax==0:
-            if self.frame_data[i][self.centx][0]<self.frame_data[i-1][self.centx][0]:
+            if self.frame_data[i][self.cent_x][0]<self.frame_data[i-1][self.cent_x][0]:
                 lowermax = i
             else:
                 i -= 1

@@ -33,7 +33,7 @@ class App():
         self.controller.init_library()
         names = self.controller.get_unique_device_names()
         
-        self.cam = Camera(self.controller,names[0])
+        self.cam = Camera(self.controller,names[2])
         #self.ncams = len(names)
         
         #self.cams = [Camera(self.controller,names[i]) for i in range(self.ncams)]
@@ -54,17 +54,13 @@ class App():
 
         #Active Parameters
 
+        self.curtime = 0
+
         self.save_file = ttk.StringVar()
         self.save_file.set('test')
 
         self.save_directory = ttk.StringVar()
         self.save_directory.set('testdir')
-
-        self.gain = ttk.StringVar()
-        self.gain.set('200.0')
-
-        self.act_gain = ttk.StringVar()
-        self.act_gain.set('200.0')
 
         self.cap_interval = ttk.StringVar()
         self.cap_interval.set('10.0')
@@ -87,21 +83,14 @@ class App():
         self.centroid_height = ttk.StringVar()
         self.centroid_height.set('n/a')
 
+        self.time_var = ttk.StringVar()
+        self.time_var.set(self.cap_interval.get())
+
+        self.saves_var = ttk.StringVar()
+        self.saves_var.set(self.num_saves.get())
+
         #Camera Setup Frame Widgets
-
-        gain_label = ttk.Label(self.setup_frame,text="Gain SetPoint: ")
-        gain_label.grid(row=0,column=0,sticky=ttk.E)
-
-        gain_entry = CopyPasteBox(self.setup_frame,textvariable=self.gain)
-        gain_entry.bind("<Return>",self.set_gain)
-        gain_entry.grid(row=0,column=1)
-
-        actgain_label = ttk.Label(self.setup_frame,text="Current Gain: ")
-        actgain_label.grid(row=1,column=0,sticky=ttk.E)
-
-        self.actgain_label2 = ttk.Label(self.setup_frame,text="{}".format(self.act_gain.get()))
-        self.actgain_label2.grid(row=1,column=1,sticky=ttk.W)
-
+        
         background_button = ttk.Button(self.setup_frame,text="Save Screen for Background Subtraction",command=self.save_background)
         background_button.grid(row=2,columnspan=2)
 
@@ -148,6 +137,19 @@ class App():
         scan_button = ttk.Button(self.save_frame,text='Perform Scan',command=self.scan_length)
         scan_button.grid(row=6,columnspan=2)
 
+        time_label1 = ttk.Label(self.save_frame,text="Time to Next Save: ")
+        time_label1.grid(row=7,column=0,sticky=ttk.E)
+
+        self.scan_time = ttk.Label(self.save_frame,text="{} s".format(self.time_var.get()))
+        self.scan_time.grid(row=7,column=1)
+
+        saves_label = ttk.Label(self.save_frame,text="Saves Left: ")
+        saves_label.grid(row=8,column=0,sticky=ttk.E)
+
+        self.saves_left = ttk.Label(self.save_frame,text="{} saves".format(self.saves_var.get()))
+        self.saves_left.grid(row=8,column=1)
+            
+
         #Calculation Frame Widgets
 
         xlabel = ttk.Label(self.calc_frame,text='Centroid x: ')
@@ -178,11 +180,6 @@ class App():
 
         self.canvas = ttk.Canvas(self.video_frame,width=640,height=480,bg='white')
         self.canvas.pack()
-        self.cam.save_image()
-        img = PIL.Image.open('canvas.jpg')
-        #img = PIL.Image.fromarray(self.cam.frame_data)
-        self.canvas.image = PIL.ImageTk.PhotoImage(img)
-        self.canvas.create_image(0,0,image=self.canvas.image,anchor='nw')
         
         self.update_parameters()
 
@@ -194,32 +191,37 @@ class App():
     def update_parameters(self):
         start = time.time()
         self.cam.update_frame_data()
-        
-        #self.cam.update_centroid_params()
-        #self.centroid_x.set(self.cam.cent_x)
-        #self.centroid_y.set(self.cam.cent_y)
-        #self.centroid_width.set(self.cam.cent_width)
-        #self.centroid.height.set(self.cam.cent_height)
+
+        self.cam.update_centroid_params()
+        self.xlabel2['text'] = self.cam.cent_x
+        self.ylabel2['text'] = 480-self.cam.cent_y
+        self.wlabel2['text'] = self.cam.cent_width
+        self.hlabel2['text'] = self.cam.cent_height
 
         self.canvas.delete('all')
         img = PIL.Image.fromarray(self.cam.frame_data).transpose(PIL.Image.FLIP_TOP_BOTTOM)
         self.canvas.image = PIL.ImageTk.PhotoImage(img)
         self.canvas.create_image(0,0,image=self.canvas.image,anchor='nw')
     
-        #self.canvas.create_line(self.cam.cent_x-self.cent_width,self.cam.cent_y,self.cam.cent_x+self.cam.cent_width,self.cam.cent_y,fill='red')
-        #self.canvas.create_line(self.cam.cent_x,self.cam.cent_y-self.cam.cent_height,self.cam.cent_x,self.cam.cent_y+self.cam.cent_height,fill='red')
+        self.canvas.create_line(self.cam.cent_x-self.cam.cent_width,480-self.cam.cent_y,self.cam.cent_x+self.cam.cent_width,480-self.cam.cent_y,fill='red')
+        self.canvas.create_line(self.cam.cent_x,480-self.cam.cent_y-self.cam.cent_height,self.cam.cent_x,480-self.cam.cent_y+self.cam.cent_height,fill='red')
         print(time.time()-start)
         self.root.after(5,self.update_parameters)
-
-    def set_gain(self,event):
-        return None
 
     def save_background(self):
         self.cam.update_background_frame(s)
 
     def scan_length(self):
-        return None
-        
+        for n in range(int(float(self.num_saves.get()))):
+            for i in range(int(float(self.cap_interval.get()))):
+                self.curtime = i
+                self.root.after(1,self.update_timeleft)
+            filename = "{}\{}{}".format(self.save_directory.get(),self.save_file.get(),n)
+            self.cam.save_file(filename)
+
+    def update_timeleft(self):
+        self.scan_time['text'] = "{} s".format(float(self.cap_interval.get()) - self.curtime)
+                           
     def close_cameras(self):
         for cam in self.cams:
             cam.close_cam()
