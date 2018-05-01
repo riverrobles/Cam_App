@@ -4,6 +4,7 @@ import numpy as np
 import logging
 import time
 import PIL.Image
+import cv2
 
 class Camera():
     def __init__(self,controller,name):
@@ -22,7 +23,8 @@ class Camera():
         #initialize background frame data
         self.background_frame = self.frame_data
         
-        #initialize centroid parameters 
+        #initialize centroid parameters
+        self.spot = []
         self.cent_x = 0
         self.cent_y = 0
         self.cent_width = 0
@@ -31,8 +33,8 @@ class Camera():
     def update_frame_data(self):
         data, width, height, depth = self.cam.get_image_data()
         raw_frame_data = np.ndarray(buffer=data,dtype=np.uint8,shape=(height,width,depth))
-        #self.frame_data = raw_frame_data
-        self.frame_data = (np.add(raw_frame_data,self.background_frame * -1)).astype(np.uint8)
+        self.frame_data = raw_frame_data
+        #self.frame_data = (np.add(raw_frame_data,self.background_frame * -1)).astype(np.uint8)
         
     def update_background_frame(self):
         data, width, height, depth = self.cam.get_image_data()
@@ -48,8 +50,30 @@ class Camera():
             logging.debug(e)
 
     def save_file(self,filename):
-        np.save("{}data".format(filename),self.frame_data())
-        self.cam.save_image(filename+".jpg",1)
+        self.update_frame_data()
+        np.save("{}data".format(filename),self.frame_data)
+        np.save("{}spotdata".format(filename),self.spot)
+        savestr = "{}.jpg".format(filename)
+        self.cam.save_image(savestr.encode('utf-8'),1)
+
+    def update(self):
+        self.update_frame_data()
+        #self.update_centroid_params()
+        self.find_spot()
+
+    def find_spot(self):
+        data = self.frame_data
+        img = cv2.cvtColor(data,cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(img,127,255,0)
+        _, contours, hierarchy = cv2.findContours(thresh,2,1)
+        big_contour = []
+        max = 0
+        for i in contours:
+            area = cv2.contourArea(i)
+            if area > max:
+                max = area
+                big_contour = i
+        self.spot = big_contour
 
     def get_x(self):
         colsums = []

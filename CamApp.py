@@ -5,6 +5,8 @@ import time
 from Camera import Camera
 import PIL.Image
 import PIL.ImageTk
+import os
+import cv2
 
 class CopyPasteBox(ttk.Entry):
     def __init__(self, master, **kw):
@@ -33,7 +35,7 @@ class App():
         self.controller.init_library()
         names = self.controller.get_unique_device_names()
         
-        self.cam = Camera(self.controller,names[2])
+        self.cam = Camera(self.controller,names[0])
         #self.ncams = len(names)
         
         #self.cams = [Camera(self.controller,names[i]) for i in range(self.ncams)]
@@ -68,9 +70,6 @@ class App():
         self.num_saves = ttk.StringVar()
         self.num_saves.set('20')
 
-        self.start_point = ttk.StringVar()
-        self.start_point.set('0.0')
-
         self.centroid_x = ttk.StringVar()
         self.centroid_x.set('n/a')
 
@@ -82,12 +81,6 @@ class App():
 
         self.centroid_height = ttk.StringVar()
         self.centroid_height.set('n/a')
-
-        self.time_var = ttk.StringVar()
-        self.time_var.set(self.cap_interval.get())
-
-        self.saves_var = ttk.StringVar()
-        self.saves_var.set(self.num_saves.get())
 
         #Camera Setup Frame Widgets
         
@@ -128,25 +121,19 @@ class App():
         savenum_entry = CopyPasteBox(self.save_frame,textvariable=self.num_saves)
         savenum_entry.grid(row=4,column=1)
 
-        start_label = ttk.Label(self.save_frame,text='Camera Starting Point: ')
-        start_label.grid(row=5,column=0,sticky=ttk.E)
-
-        start_entry = CopyPasteBox(self.save_frame,textvariable=self.start_point)
-        start_entry.grid(row=5,column=1)
-
         scan_button = ttk.Button(self.save_frame,text='Perform Scan',command=self.scan_length)
         scan_button.grid(row=6,columnspan=2)
 
         time_label1 = ttk.Label(self.save_frame,text="Time to Next Save: ")
         time_label1.grid(row=7,column=0,sticky=ttk.E)
 
-        self.scan_time = ttk.Label(self.save_frame,text="{} s".format(self.time_var.get()))
+        self.scan_time = ttk.Label(self.save_frame,text="n/a")
         self.scan_time.grid(row=7,column=1)
 
         saves_label = ttk.Label(self.save_frame,text="Saves Left: ")
         saves_label.grid(row=8,column=0,sticky=ttk.E)
 
-        self.saves_left = ttk.Label(self.save_frame,text="{} saves".format(self.saves_var.get()))
+        self.saves_left = ttk.Label(self.save_frame,text="n/a")
         self.saves_left.grid(row=8,column=1)
             
 
@@ -190,9 +177,8 @@ class App():
         
     def update_parameters(self):
         start = time.time()
-        self.cam.update_frame_data()
-
-        self.cam.update_centroid_params()
+        self.cam.update()
+        
         self.xlabel2['text'] = self.cam.cent_x
         self.ylabel2['text'] = 480-self.cam.cent_y
         self.wlabel2['text'] = self.cam.cent_width
@@ -202,26 +188,58 @@ class App():
         img = PIL.Image.fromarray(self.cam.frame_data).transpose(PIL.Image.FLIP_TOP_BOTTOM)
         self.canvas.image = PIL.ImageTk.PhotoImage(img)
         self.canvas.create_image(0,0,image=self.canvas.image,anchor='nw')
-    
-        self.canvas.create_line(self.cam.cent_x-self.cam.cent_width,480-self.cam.cent_y,self.cam.cent_x+self.cam.cent_width,480-self.cam.cent_y,fill='red')
-        self.canvas.create_line(self.cam.cent_x,480-self.cam.cent_y-self.cam.cent_height,self.cam.cent_x,480-self.cam.cent_y+self.cam.cent_height,fill='red')
+
+        try:
+            spot = self.cam.spot
+            #ellipse = self.find_spot()
+            for pt in spot:
+                self.canvas.create_oval(pt[0][0],480-pt[0][1],pt[0][0],480-pt[0][1],width=1,fill='red')
+        except IndexError as e:
+            logging.debug(e)
+            logging.debug("Spot characterization failed")
+
         print(time.time()-start)
-        self.root.after(5,self.update_parameters)
+        self.root.after(500,self.update_parameters)
 
     def save_background(self):
-        self.cam.update_background_frame(s)
+        self.cam.update_background_frame()
 
     def scan_length(self):
+        dir = self.save_directory.get()
+        if not os.path.exists(dir):
+            os.makedirs(dir)
         for n in range(int(float(self.num_saves.get()))):
-            for i in range(int(float(self.cap_interval.get()))):
-                self.curtime = i
-                self.root.after(1,self.update_timeleft)
-            filename = "{}\{}{}".format(self.save_directory.get(),self.save_file.get(),n)
-            self.cam.save_file(filename)
+            self.cam.update()
+            self.save_number = n
+            self.saves_left['text'] = float(self.num_saves.get())-self.save_number
+            self.curtime = float(self.cap_interval.get())
+            self.update_timeleft()
 
     def update_timeleft(self):
-        self.scan_time['text'] = "{} s".format(float(self.cap_interval.get()) - self.curtime)
-                           
+        while self.curtime>=1:
+            self.scan_time['text'] = "{} s".format(self.curtime)
+            self.root.update_idletasks()
+            logging.debug(self.curtime)
+            self.curtime += -1
+            self.root.after(1000)
+        filename = "{}\{}{}".format(self.save_directory.get(),self.save_file.get(),str(self.save_number))
+        self.cam.save_file(filename)
+        logging.debug("Saving to file {}".format(filename))
+
+#    def find_spot(self):
+#        data = self.cam.frame_data
+#        img = cv2.cvtColor(data,cv2.COLOR_BGR2GRAY)
+#        ret,thresh = cv2.threshold(img,127,255,0)
+#        _,contours,hierarchy = cv2.findContours(thresh,2,1)
+#        big_contour = []
+#        max = 0
+#        for i in contours:
+#            area = cv2.contourArea(i)
+#            if area>max:
+#                max = area
+#                big_contour = i
+#        return big_contour
+  
     def close_cameras(self):
         for cam in self.cams:
             cam.close_cam()
