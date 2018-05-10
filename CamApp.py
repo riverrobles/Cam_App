@@ -179,24 +179,22 @@ class App():
         start = time.time()
         self.cam.update()
         
-        self.xlabel2['text'] = self.cam.cent_x
-        self.ylabel2['text'] = 480-self.cam.cent_y
-        self.wlabel2['text'] = self.cam.cent_width
-        self.hlabel2['text'] = self.cam.cent_height
+        self.xlabel2['text'] = self.cam.angle
+        self.ylabel2['text'] = 0
+        self.wlabel2['text'] = self.cam.major
+        self.hlabel2['text'] = self.cam.minor
 
         self.canvas.delete('all')
         img = PIL.Image.fromarray(self.cam.frame_data).transpose(PIL.Image.FLIP_TOP_BOTTOM)
         self.canvas.image = PIL.ImageTk.PhotoImage(img)
         self.canvas.create_image(0,0,image=self.canvas.image,anchor='nw')
 
-        try:
+        if self.cam.spot!=[]:
             spot = self.cam.spot
-            #ellipse = self.find_spot()
             for pt in spot:
                 self.canvas.create_oval(pt[0][0],480-pt[0][1],pt[0][0],480-pt[0][1],width=1,fill='red')
-        except IndexError as e:
-            logging.debug(e)
-            logging.debug("Spot characterization failed")
+            self.canvas.create_line(self.cam.xcent,480-self.cam.ycent,self.cam.fitx[self.cam.extremaindex],480-self.cam.fity[self.cam.extremaindex],fill='red')
+            self.canvas.create_line(self.cam.xcent,480-self.cam.ycent,self.cam.fitx[self.cam.extremaindex+250],480-self.cam.fity[self.cam.extremaindex+250],fill='red')
 
         print(time.time()-start)
         self.root.after(500,self.update_parameters)
@@ -225,20 +223,6 @@ class App():
         filename = "{}\{}{}".format(self.save_directory.get(),self.save_file.get(),str(self.save_number))
         self.cam.save_file(filename)
         logging.debug("Saving to file {}".format(filename))
-
-#    def find_spot(self):
-#        data = self.cam.frame_data
-#        img = cv2.cvtColor(data,cv2.COLOR_BGR2GRAY)
-#        ret,thresh = cv2.threshold(img,127,255,0)
-#        _,contours,hierarchy = cv2.findContours(thresh,2,1)
-#        big_contour = []
-#        max = 0
-#        for i in contours:
-#            area = cv2.contourArea(i)
-#            if area>max:
-#                max = area
-#                big_contour = i
-#        return big_contour
   
     def close_cameras(self):
         for cam in self.cams:

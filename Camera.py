@@ -24,11 +24,13 @@ class Camera():
         self.background_frame = self.frame_data
         
         #initialize centroid parameters
+        self.fitx, self.fity = [], []
+        self.xcent, self.ycent = 0, 0
         self.spot = []
-        self.cent_x = 0
-        self.cent_y = 0
-        self.cent_width = 0
-        self.cent_height = 0
+        self.extremaindex = 0
+        self.major = 0
+        self.minor = 0
+        self.angle = 0
         
     def update_frame_data(self):
         data, width, height, depth = self.cam.get_image_data()
@@ -58,8 +60,8 @@ class Camera():
 
     def update(self):
         self.update_frame_data()
-        #self.update_centroid_params()
         self.find_spot()
+        self.least_squares()
 
     def find_spot(self):
         data = self.frame_data
@@ -75,51 +77,37 @@ class Camera():
                 big_contour = i
         self.spot = big_contour
 
-    def get_x(self):
-        colsums = []
-        for i in range(640):
-            sum = np.asarray([0,0,0])
-            for j in range(480): 
-                sum = np.add(sum,self.frame_data[j][i])
-            colsums.append(np.median(sum))
-        self.cent_x = np.argmax(colsums)
+    def least_squares(self):
+        if self.spot!=[]:
+            try: 
+                x = np.asarray([point[0][0] for point in self.spot],dtype = 'float64')
+                y = np.asarray([point[0][1] for point in self.spot],dtype = 'float64')
+                xmean, ymean = np.mean(x), np.mean(y)
+                x -= xmean
+                y -= ymean
+                U, S, V = np.linalg.svd(np.stack((x,y)))
 
-    def get_y(self):
-        rowsums = []
-        for row in self.frame_data: 
-            rowsums.append(np.median(np.sum(row,axis=0)))
-        self.cent_y = np.argmax(rowsums)
-        
-    def get_width(self):
-        maxrow = self.frame_data[self.cent_y]
-        i, uppermax = self.cent_x, 0 
-        while uppermax==0:
-            if maxrow[i][0]<maxrow[i+1][0]:
-                uppermax = i
-            else:
-                i += 1
-        i, lowermax = self.cent_x, 0
-        while lowermax==0:
-            if maxrow[i][0]<maxrow[i-1][0]:
-                lowermax = i
-            else:
-                i -= 1
-        self.cent_width = (uppermax-lowermax)/2
-        
-    def get_height(self):
-        i, uppermax = self.cent_y, 0 
-        while uppermax==0:
-            if self.frame_data[i][self.cent_x][0]<self.frame_data[i+1][self.cent_x][0]:
-                uppermax = i
-            else:
-                i += 1 
-        i, lowermax = self.cent_y, 0
-        while lowermax==0:
-            if self.frame_data[i][self.cent_x][0]<self.frame_data[i-1][self.cent_x][0]:
-                lowermax = i
-            else:
-                i -= 1
-        self.cent_height = (uppermax-lowermax)/2
+                tt = np.linspace(0,2*np.pi,1000)
+                circle = np.stack((np.cos(tt),np.sin(tt)))
+                transform = np.sqrt(2/len(self.spot))*U.dot(np.diag(S))
+                fit = transform.dot(circle)+np.array([[xmean],[ymean]])
+                
+                self.fitx, self.fity = fit[0], fit[1]
+                self.xcent, self.ycent = np.mean(self.fitx), np.mean(self.fity)
+                maxdist, index = 0, 0
+                for i in range(int(len(self.fitx)/4)):
+                    if np.sqrt((self.xcent-self.fitx[i])**2+(self.ycent-self.fity[i])**2) > maxdist:
+                        maxdist = np.sqrt((self.xcent-self.fitx[i])**2+(self.ycent-self.fity[i])**2)
+                        index = i
+                extrema = [np.sqrt((self.fitx[i]-self.xcent)**2+(self.fity[i]-self.ycent)**2),np.sqrt((self.fitx[i+250]-self.xcent)**2+(self.fity[i+250]-self.ycent)**2)]
+                self.extremaindex = index
+                self.major, self.minor = np.max(extrema), np.min(extrema)
+                self.angle = np.arctan2(-(self.fity[0]-self.ycent),(self.fitx[0]-self.xcent))
+            except ValueError as e:
+                logging.debug(e)
+                logging.debug("No spot present, value error occured")
+        else:
+            logging.debug("No spot present")
 
     def close_cam(self):
         self.cam.stop_live()
