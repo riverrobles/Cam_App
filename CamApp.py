@@ -179,8 +179,8 @@ class App():
         start = time.time()
         self.cam.update()
         
-        self.xlabel2['text'] = self.cam.angle
-        self.ylabel2['text'] = 0
+        self.xlabel2['text'] = self.cam.xcent
+        self.ylabel2['text'] = 480-self.cam.ycent
         self.wlabel2['text'] = self.cam.major
         self.hlabel2['text'] = self.cam.minor
 
