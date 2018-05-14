@@ -3,7 +3,6 @@ import os
 import numpy as np
 import logging
 import time
-import PIL.Image
 import cv2
 
 class Camera():
